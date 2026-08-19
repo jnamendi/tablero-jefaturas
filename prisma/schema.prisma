@@ -1,0 +1,126 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Area {
+  id        String     @id @db.VarChar(36)
+  name      String     @db.VarChar(255)
+  position  String?    @db.VarChar(255)
+  code      String     @unique @db.VarChar(50)
+  
+  activities Activity[]
+  indicators Indicator[]
+  diarios    Diario[]
+
+  @@map("areas")
+}
+
+model Activity {
+  id           String    @id @db.VarChar(36)
+  areaId       String    @map("area_id") @db.VarChar(36)
+  title        String    @db.VarChar(255)
+  status       String    @default("pendiente") @db.VarChar(50)
+  assignedDate String    @map("assigned_date") @db.VarChar(50)
+  dueDate      String    @map("due_date") @db.VarChar(50)
+  points       Int       @default(0)
+  completedAt  String?   @map("completed_at") @db.VarChar(50)
+  
+  area         Area      @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+model Indicator {
+  id           String                 @id @db.VarChar(36)
+  areaId       String                 @map("area_id") @db.VarChar(36)
+  name         String                 @db.VarChar(255)
+  unit         String                 @db.VarChar(50)
+  description  String?                @db.Text
+  
+  area         Area                   @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  periodValues IndicatorPeriodValue[]
+
+  @@map("indicators")
+}
+
+model IndicatorPeriodValue {
+  id          Int       @id @default(autoincrement())
+  indicatorId String    @map("indicator_id") @db.VarChar(36)
+  monthKey    String    @map("month_key") @db.VarChar(2)
+  goal        Float?
+  result      Float?
+  
+  indicator   Indicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+
+  @@unique([indicatorId, monthKey])
+  @@map("indicator_period_values")
+}
+
+model Project {
+  id          String        @id @db.VarChar(36)
+  name        String        @db.VarChar(255)
+  description String?       @db.Text
+  points      Int           @default(0)
+  status      String        @default("pendiente") @db.VarChar(50)
+  completedAt String?       @map("completed_at") @db.VarChar(50)
+  
+  areaIds     ProjectArea[]
+
+  @@map("projects")
+}
+
+model ProjectArea {
+  projectId String  @map("project_id") @db.VarChar(36)
+  areaId    String  @map("area_id") @db.VarChar(36)
+  
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, areaId])
+  @@map("project_areas")
+}
+
+model Diario {
+  id          String             @id @db.VarChar(36)
+  areaId      String             @map("area_id") @db.VarChar(36)
+  type        String             @db.VarChar(50)
+  name        String             @db.VarChar(255)
+  frequency   String             @db.VarChar(50)
+  objective   String?            @db.Text
+  
+  area        Area               @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  entries     DiarioEntry[]
+  evaluations DiarioEvaluation[]
+
+  @@map("diarios")
+}
+
+model DiarioEntry {
+  id           String  @id @db.VarChar(36)
+  diarioId     String  @map("diario_id") @db.VarChar(36)
+  date         String  @db.VarChar(50)
+  comment      String  @db.Text
+  evidenceUrl  String? @map("evidence_url") @db.VarChar(1024)
+  evidenceDesc String? @map("evidence_desc") @db.VarChar(512)
+  
+  diario       Diario  @relation(fields: [diarioId], references: [id], onDelete: Cascade)
+
+  @@map("diario_entries")
+}
+
+model DiarioEvaluation {
+  id       Int     @id @default(autoincrement())
+  diarioId String  @map("diario_id") @db.VarChar(36)
+  monthKey String  @map("month_key") @db.VarChar(7)
+  status   String? @db.VarChar(50)
+  note     String? @db.Text
+  
+  diario   Diario  @relation(fields: [diarioId], references: [id], onDelete: Cascade)
+
+  @@unique([diarioId, monthKey])
+  @@map("diario_evaluations")
+}
