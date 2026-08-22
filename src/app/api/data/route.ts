@@ -7,6 +7,26 @@ import { seedData } from '../../../data/seed';
 // write conflicts, or unique key violations (e.g. areas_code_key) on concurrent upsertions.
 let postQueue = Promise.resolve();
 
+function parseDate(d: any): Date | null {
+  if (!d) return null;
+  if (d instanceof Date) return isNaN(d.getTime()) ? null : d;
+  if (typeof d !== 'string' || !d.trim()) return null;
+  const str = d.trim();
+  const parsed = new Date(str.includes('T') ? str : `${str}T00:00:00.000Z`);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDate(d: any): string | null {
+  if (!d) return null;
+  if (d instanceof Date) return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  if (typeof d === 'string') {
+    const trimmed = d.trim();
+    if (!trimmed) return null;
+    return trimmed.slice(0, 10);
+  }
+  return null;
+}
+
 export async function GET() {
   try {
     let rawAreas = await prisma.area.findMany();
@@ -34,10 +54,10 @@ export async function GET() {
                 areaId: act.areaId,
                 title: act.title,
                 status: act.status,
-                assignedDate: act.assignedDate || '',
-                dueDate: act.dueDate || '',
+                assignedDate: parseDate(act.assignedDate),
+                dueDate: parseDate(act.dueDate),
                 points: Number(act.points) || 0,
-                completedAt: act.completedAt || null,
+                completedAt: parseDate(act.completedAt),
               }
             });
           }
@@ -86,7 +106,7 @@ export async function GET() {
                 description: p.description || null,
                 points: Number(p.points) || 0,
                 status: p.status,
-                completedAt: p.completedAt || null,
+                completedAt: parseDate(p.completedAt),
               }
             });
 
@@ -118,7 +138,7 @@ export async function GET() {
                 data: d.entries.map((e: any) => ({
                   id: e.id,
                   diarioId: d.id,
-                  date: e.date,
+                  date: parseDate(e.date) || new Date(),
                   comment: e.comment,
                   evidenceUrl: e.evidenceUrl || null,
                   evidenceDesc: e.evidenceDesc || null,
@@ -201,7 +221,7 @@ export async function GET() {
       description: p.description || undefined,
       points: p.points,
       status: p.status as any,
-      completedAt: p.completedAt || null,
+      completedAt: formatDate(p.completedAt),
       areaIds: p.areaIds.map((pa) => pa.areaId),
     }));
 
@@ -222,14 +242,23 @@ export async function GET() {
         name: d.name,
         frequency: d.frequency,
         objective: d.objective || undefined,
-        entries: d.entries,
+        entries: d.entries.map((e) => ({
+          ...e,
+          date: formatDate(e.date) || '',
+        })),
         evaluations,
       };
     });
 
     return NextResponse.json({
       areas: rawAreas,
-      activities: rawActivities.map(a => ({ ...a, completedAt: a.completedAt || null, status: a.status as any })),
+      activities: rawActivities.map(a => ({
+        ...a,
+        assignedDate: formatDate(a.assignedDate) || '',
+        dueDate: formatDate(a.dueDate) || '',
+        completedAt: formatDate(a.completedAt),
+        status: a.status as any,
+      })),
       indicators,
       projects,
       diarios,
@@ -281,20 +310,20 @@ async function handlePost(request: Request): Promise<Response> {
             areaId: act.areaId,
             title: act.title,
             status: act.status,
-            assignedDate: act.assignedDate || '',
-            dueDate: act.dueDate || '',
+            assignedDate: parseDate(act.assignedDate),
+            dueDate: parseDate(act.dueDate),
             points: Number(act.points) || 0,
-            completedAt: act.completedAt || null,
+            completedAt: parseDate(act.completedAt),
           },
           create: {
             id: act.id,
             areaId: act.areaId,
             title: act.title,
             status: act.status,
-            assignedDate: act.assignedDate || '',
-            dueDate: act.dueDate || '',
+            assignedDate: parseDate(act.assignedDate),
+            dueDate: parseDate(act.dueDate),
             points: Number(act.points) || 0,
-            completedAt: act.completedAt || null,
+            completedAt: parseDate(act.completedAt),
           },
         });
       }
@@ -350,7 +379,7 @@ async function handlePost(request: Request): Promise<Response> {
             description: p.description || null,
             points: Number(p.points) || 0,
             status: p.status,
-            completedAt: p.completedAt || null,
+            completedAt: parseDate(p.completedAt),
           },
           create: {
             id: p.id,
@@ -358,7 +387,7 @@ async function handlePost(request: Request): Promise<Response> {
             description: p.description || null,
             points: Number(p.points) || 0,
             status: p.status,
-            completedAt: p.completedAt || null,
+            completedAt: parseDate(p.completedAt),
           },
         });
 
@@ -410,7 +439,7 @@ async function handlePost(request: Request): Promise<Response> {
             data: d.entries.map((e: any) => ({
               id: e.id,
               diarioId: d.id,
-              date: e.date,
+              date: parseDate(e.date) || new Date(),
               comment: e.comment,
               evidenceUrl: e.evidenceUrl || null,
               evidenceDesc: e.evidenceDesc || null,

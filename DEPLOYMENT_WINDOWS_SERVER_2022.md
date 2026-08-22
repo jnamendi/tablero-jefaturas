@@ -207,10 +207,10 @@ model Activity {
   areaId       String    @map("area_id") @db.VarChar(36)
   title        String    @db.NVarChar(255)
   status       String    @default("pendiente") @db.VarChar(50)
-  assignedDate String?   @map("assigned_date") @db.VarChar(50)
-  dueDate      String?   @map("due_date") @db.VarChar(50)
+  assignedDate DateTime? @map("assigned_date")
+  dueDate      DateTime? @map("due_date")
   points       Int       @default(0)
-  completedAt  String?   @map("completed_at") @db.VarChar(50)
+  completedAt  DateTime? @map("completed_at")
   
   area         Area      @relation(fields: [areaId], references: [id], onDelete: Cascade)
 
@@ -249,7 +249,7 @@ model Project {
   description String?       @db.NVarChar(Max)
   points      Int           @default(0)
   status      String        @default("pendiente") @db.VarChar(50)
-  completedAt String?       @map("completed_at") @db.VarChar(50)
+  completedAt DateTime?     @map("completed_at")
   
   areaIds     ProjectArea[]
 
@@ -282,14 +282,14 @@ model Diario {
 }
 
 model DiarioEntry {
-  id           String  @id @db.VarChar(36)
-  diarioId     String  @map("diario_id") @db.VarChar(36)
-  date         String  @db.VarChar(50)
-  comment      String  @db.NVarChar(Max)
-  evidenceUrl  String? @map("evidence_url") @db.VarChar(1024)
-  evidenceDesc String? @map("evidence_desc") @db.NVarChar(512)
+  id           String   @id @db.VarChar(36)
+  diarioId     String   @map("diario_id") @db.VarChar(36)
+  date         DateTime @map("date")
+  comment      String   @db.NVarChar(Max)
+  evidenceUrl  String?  @map("evidence_url") @db.VarChar(1024)
+  evidenceDesc String?  @map("evidence_desc") @db.NVarChar(512)
   
-  diario       Diario  @relation(fields: [diarioId], references: [id], onDelete: Cascade)
+  diario       Diario   @relation(fields: [diarioId], references: [id], onDelete: Cascade)
 
   @@map("diario_entries")
 }
@@ -378,18 +378,26 @@ Invoke-RestMethod -Uri "http://127.0.0.1:3000" -Method Head
 
 ## Paso 6: Configurar IIS como Reverse Proxy (Puertos 80 y 443)
 
-### 6.1 Instalar Rol IIS y Módulos de Enrutamiento
+### 6.1 Instalar Rol IIS y Módulos de Enrutamiento (URL Rewrite y ARR 3.0)
 ```powershell
 # 1. Instalar el rol de servidor Web (IIS)
 Install-WindowsFeature -name Web-Server -IncludeManagementTools
 
-# 2. Instalar módulos ARR (Application Request Routing) y URL Rewrite
-choco install -y urlrewrite arr
-```
+# 2. Instalar módulo URL Rewrite (mediante Chocolatey)
+choco install -y urlrewrite
 
-> **Importante:** Ejecute `iisreset` para asegurar que los módulos sean reconocidos por el servidor web.
+# 3. Descargar e instalar directamente el módulo oficial Microsoft ARR 3.0 (x64)
+$arrUrl = "https://go.microsoft.com/fwlink/?LinkID=615136"
+$arrMsi = "$env:TEMP\requestRouter_amd64.msi"
 
-```powershell
+Write-Host "Descargando Application Request Routing 3.0..." -ForegroundColor Cyan
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Invoke-WebRequest -Uri $arrUrl -OutFile $arrMsi -UseBasicParsing
+
+Write-Host "Instalando Application Request Routing 3.0..." -ForegroundColor Cyan
+Start-Process msiexec.exe -ArgumentList "/i `"$arrMsi`" /qn /norestart" -Wait
+
+# 4. Reiniciar IIS para registrar los nuevos módulos
 iisreset
 ```
 

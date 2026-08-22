@@ -25,10 +25,10 @@ model Activity {
   areaId       String    @map("area_id") @db.VarChar(36)
   title        String    @db.VarChar(255)
   status       String    @default("pendiente") @db.VarChar(50)
-  assignedDate String    @map("assigned_date") @db.VarChar(50)
-  dueDate      String    @map("due_date") @db.VarChar(50)
+  assignedDate DateTime? @map("assigned_date")
+  dueDate      DateTime? @map("due_date")
   points       Int       @default(0)
-  completedAt  String?   @map("completed_at") @db.VarChar(50)
+  completedAt  DateTime? @map("completed_at")
   
   area         Area      @relation(fields: [areaId], references: [id], onDelete: Cascade)
 
@@ -67,7 +67,7 @@ model Project {
   description String?       @db.Text
   points      Int           @default(0)
   status      String        @default("pendiente") @db.VarChar(50)
-  completedAt String?       @map("completed_at") @db.VarChar(50)
+  completedAt DateTime?     @map("completed_at")
   
   areaIds     ProjectArea[]
 
@@ -100,14 +100,14 @@ model Diario {
 }
 
 model DiarioEntry {
-  id           String  @id @db.VarChar(36)
-  diarioId     String  @map("diario_id") @db.VarChar(36)
-  date         String  @db.VarChar(50)
-  comment      String  @db.Text
-  evidenceUrl  String? @map("evidence_url") @db.VarChar(1024)
-  evidenceDesc String? @map("evidence_desc") @db.VarChar(512)
+  id           String   @id @db.VarChar(36)
+  diarioId     String   @map("diario_id") @db.VarChar(36)
+  date         DateTime @map("date")
+  comment      String   @db.Text
+  evidenceUrl  String?  @map("evidence_url") @db.VarChar(1024)
+  evidenceDesc String?  @map("evidence_desc") @db.VarChar(512)
   
-  diario       Diario  @relation(fields: [diarioId], references: [id], onDelete: Cascade)
+  diario       Diario   @relation(fields: [diarioId], references: [id], onDelete: Cascade)
 
   @@map("diario_entries")
 }
